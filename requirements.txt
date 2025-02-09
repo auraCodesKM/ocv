@@ -1,6 +1,7 @@
 streamlit
-opencv-python-headless==4.7.0.72
+opencv-python-headless
 mediapipe
 numpy
-tensorflow-cpu==2.9.1
-protobuf==3.20.1
+tensorflow-cpu
+pillow
+protobuf
