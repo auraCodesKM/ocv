@@ -28,44 +28,32 @@ def predict_gesture(hand_landmarks):
     prediction = model.predict(landmarks)
     return gesture_labels[np.argmax(prediction)]
 
+def process_image(image):
+    """Process an uploaded image and return the gesture prediction."""
+    frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    results = hands.process(frame)
+
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+            gesture = predict_gesture(hand_landmarks)
+            cv2.putText(frame, gesture, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    
+    return frame
+
 def main():
     st.title("Hand Gesture Recognition")
-    st.markdown("Enable the checkbox to start your webcam and detect hand gestures.")
+    st.markdown("Use the camera to capture an image or upload one.")
 
-    run = st.checkbox("Start Camera")
-    FRAME_WINDOW = st.image([])
+    # Capture image from camera
+    img_file = st.camera_input("Take a picture")
 
-    cap = None  # Initialize camera capture variable
+    if img_file is not None:
+        file_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
+        image = cv2.imdecode(file_bytes, 1)
 
-    if run:
-        cap = cv2.VideoCapture(0)  # Open webcam
-        if not cap.isOpened():
-            st.error("Error: Could not access the webcam.")
-            return
-
-        while run:
-            ret, frame = cap.read()
-            if not ret:
-                st.error("Failed to capture image")
-                break
-            
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = hands.process(frame)
-
-            if results.multi_hand_landmarks:
-                for hand_landmarks in results.multi_hand_landmarks:
-                    mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-                    gesture = predict_gesture(hand_landmarks)
-                    cv2.putText(frame, gesture, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            
-            FRAME_WINDOW.image(frame)
-
-        cap.release()
-        cv2.destroyAllWindows()
-    else:
-        if cap:
-            cap.release()
-            cv2.destroyAllWindows()
+        processed_image = process_image(image)
+        st.image(processed_image, caption="Processed Image", use_column_width=True)
 
 if __name__ == "__main__":
     main()
