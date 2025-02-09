@@ -2,11 +2,12 @@ import streamlit as st
 import cv2
 import mediapipe as mp
 import numpy as np
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+from collections import Counter
 
 # Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
+hands = mp_hands.Hands(min_detection_confidence=0.8, min_tracking_confidence=0.8)
 
 # Define gesture classifier
 GESTURES = {
@@ -26,28 +27,43 @@ def recognize_gesture(landmarks):
             return gesture
     return "Unknown"
 
-class VideoTransformer(VideoTransformerBase):
-    def __init__(self):
-        self.hands = mp_hands.Hands(min_detection_confidence=0.8, min_tracking_confidence=0.8)
-
-    def transform(self, frame):
-        img = frame.to_ndarray(format="bgr24")
-        img = cv2.flip(img, 1)  # Mirror the image
-
-        rgb_frame = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        result = self.hands.process(rgb_frame)
+def main():
+    st.title("Live Gesture Recognition using MediaPipe")
+    st.markdown(
+        """
+        <style>
+        .big-font {
+            font-size:30px !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+    run = st.checkbox("Start Camera")
+    FRAME_WINDOW = st.image([])
+    cap = cv2.VideoCapture(0)
+    
+    while run:
+        ret, frame = cap.read()
+        if not ret:
+            st.error("Failed to capture image")
+            break
+        
+        frame = cv2.flip(frame, 1)
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        result = hands.process(rgb_frame)
+        
         gesture_detected = "None"
-
+        
         if result.multi_hand_landmarks:
             for hand_landmarks in result.multi_hand_landmarks:
-                mp_drawing.draw_landmarks(img, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
                 gesture_detected = recognize_gesture(hand_landmarks)
-                cv2.putText(img, gesture_detected, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
+                cv2.putText(frame, gesture_detected, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
+        
+        FRAME_WINDOW.image(frame, channels="BGR")
+        st.markdown(f'<p class="big-font">Detected Gesture: {gesture_detected}</p>', unsafe_allow_html=True)
+    
+    cap.release()
+    cv2.destroyAllWindows()
 
-        return img
-
-# Streamlit UI
-st.title("Live Gesture Recognition using MediaPipe")
-st.write("Enable camera access and perform gestures!")
-
-webrtc_streamer(key="gesture-detection", video_transformer_factory=VideoTransformer)
+if __name__ == "__main__":
+    main()
