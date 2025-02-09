@@ -2,4 +2,4 @@ streamlit
 opencv-python-headless==4.5.5.64
 mediapipe
 numpy
-tensorflow==2.6.0
+tensorflow==2.8.0
