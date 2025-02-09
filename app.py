@@ -3,9 +3,10 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from tensorflow.keras.models import load_model
+from PIL import Image
 
 # Load the trained hand gesture model
-MODEL_PATH = "hand_gesture_model.h5"  # Ensure this file is in the same directory
+MODEL_PATH = "hand_gesture_model.h5"  # Ensure this file is in your repo
 model = load_model(MODEL_PATH)
 
 # Load MediaPipe Hands
@@ -28,32 +29,31 @@ def predict_gesture(hand_landmarks):
     prediction = model.predict(landmarks)
     return gesture_labels[np.argmax(prediction)]
 
-def process_image(image):
-    """Process an uploaded image and return the gesture prediction."""
-    frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    results = hands.process(frame)
-
-    if results.multi_hand_landmarks:
-        for hand_landmarks in results.multi_hand_landmarks:
-            mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-            gesture = predict_gesture(hand_landmarks)
-            cv2.putText(frame, gesture, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-    
-    return frame
-
 def main():
     st.title("Hand Gesture Recognition")
-    st.markdown("Use the camera to capture an image or upload one.")
 
-    # Capture image from camera
+    # Use Streamlit's built-in camera input
     img_file = st.camera_input("Take a picture")
 
     if img_file is not None:
-        file_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
-        image = cv2.imdecode(file_bytes, 1)
+        # Convert the uploaded image to OpenCV format
+        image = Image.open(img_file)
+        frame = np.array(image)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
-        processed_image = process_image(image)
-        st.image(processed_image, caption="Processed Image", use_column_width=True)
+        # Process the image for hand gestures
+        results = hands.process(frame)
+
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
+                mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                gesture = predict_gesture(hand_landmarks)
+                h, w, _ = frame.shape
+                cv2.putText(frame, gesture, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+            # Convert image back to RGB for displaying in Streamlit
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            st.image(frame, caption=f"Predicted Gesture: {gesture}", use_column_width=True)
 
 if __name__ == "__main__":
     main()
