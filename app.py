@@ -2,7 +2,6 @@ import streamlit as st
 import cv2
 import mediapipe as mp
 import numpy as np
-from collections import Counter
 
 # Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
